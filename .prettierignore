@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.state/
+coverage/
+playwright-report/
+test-results/
+apps/*/src/generated/contracts/

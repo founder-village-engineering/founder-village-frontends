@@ -1,0 +1,41 @@
+name: Deploy Pages app
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Registered frontend slug"
+        type: string
+        required: true
+        default: founder-food-deliveries
+      operation:
+        type: choice
+        options: [plan, provision, deploy, verify]
+        required: true
+        default: deploy
+permissions: { contents: read }
+concurrency:
+  group: pages-${{ inputs.app }}-${{ inputs.operation }}
+  cancel-in-progress: false
+jobs:
+  pages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 24.22.0, cache: npm }
+      - run: npm ci
+      - run: npm run contracts:check && npm run typecheck && npm test
+      - name: Run shared Pages operation
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FV_RUNTIME_API_ORIGIN: ${{ vars.FV_RUNTIME_API_ORIGIN }}
+          FV_OIDC_AUTHORIZATION_ENDPOINT: ${{ vars.FV_OIDC_AUTHORIZATION_ENDPOINT }}
+          FV_OIDC_TOKEN_ENDPOINT: ${{ vars.FV_OIDC_TOKEN_ENDPOINT }}
+          FV_OIDC_CLIENT_ID: ${{ vars.FV_OIDC_CLIENT_ID }}
+          FV_OIDC_AUDIENCE: ${{ vars.FV_OIDC_AUDIENCE }}
+          PAGES_APP: ${{ inputs.app }}
+          PAGES_OPERATION: ${{ inputs.operation }}
+        run: npm run pages -- "$PAGES_OPERATION" --app "$PAGES_APP" --production

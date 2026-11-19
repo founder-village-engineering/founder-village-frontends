@@ -1,0 +1,7 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "founder-food-deliveries",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-11-19",
+  "send_metrics": false,
+}

@@ -1,0 +1,16 @@
+const title = __TITLE_JSON__;
+const description = __DESCRIPTION_JSON__;
+
+export function App() {
+  return (
+    <main>
+      <span>Founder Village</span>
+      <h1>{title}</h1>
+      <p>{description}</p>
+      <section>
+        <h2>Ready for the product flow</h2>
+        <p>Extend this shell with the generated runtime contract and an authenticated journey.</p>
+      </section>
+    </main>
+  );
+}

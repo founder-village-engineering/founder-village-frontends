@@ -1,0 +1,19 @@
+{
+  "name": "@founder-village/food-deliveries",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "pages:plan": "tsx ../../scripts/pages.ts plan --app founder-food-deliveries",
+    "pages:deploy": "tsx ../../scripts/pages.ts deploy --app founder-food-deliveries"
+  },
+  "dependencies": {
+    "@founder-village/frontend-platform": "*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  }
+}
