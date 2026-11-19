@@ -1,5 +1,7 @@
 # Frontend architecture
 
+> **Public repository safety:** This repository and its full Git history are public. Be 100% careful not to leak secrets, API keys or tokens, credentials, passwords, private keys, session material, personal or customer data, or sensitive operational details in source, documentation, examples, fixtures, logs, screenshots, generated artifacts, commits, pull requests, or deployments. Use obviously fake placeholders in committed examples, keep real values only in approved ignored local secret stores, and inspect staged and generated output before publishing. If unsure, treat the value as secret and stop.
+
 ## One manifest, two repositories
 
 Each app manifest defines its slug, runtime application, Pages project/origin, local HTTPS origin/port, and runtime contract source. The frontend scaffold and runtime onboarding scripts parse the same strict shape. Runtime `config/frontends.json` remains authoritative for browser origins and application mapping.

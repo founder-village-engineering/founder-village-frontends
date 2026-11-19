@@ -1,5 +1,6 @@
 # Founder Village frontends
 
+- This repository and its full Git history are public. Be 100% careful not to leak secrets, API keys or tokens, credentials, passwords, private keys, session material, personal or customer data, or sensitive operational details in source, documentation, examples, fixtures, logs, screenshots, generated artifacts, commits, pull requests, or deployments. Use obviously fake placeholders in committed examples, keep real values only in approved ignored local secret stores, and inspect staged and generated output before publishing. If unsure, treat the value as secret and stop.
 - Author source and automation in TypeScript (`.ts`/`.tsx`). Keep every app under `apps/<slug>` and reusable browser/runtime logic under `packages/`.
 - All public frontends deploy as static Cloudflare Pages projects on their exact `*.pages.dev` origin. Do not add a Worker entrypoint, Worker route, Pages Function, `_worker.js`, or `wrangler deploy` path.
 - `founder-village-app.json` is each app's manifest. Pages commands must go through the shared root tooling, which builds first and verifies the exact project/origin.

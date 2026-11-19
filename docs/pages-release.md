@@ -1,5 +1,7 @@
 # Cloudflare Pages release
 
+> **Public repository safety:** This repository and its full Git history are public. Be 100% careful not to leak secrets, API keys or tokens, credentials, passwords, private keys, session material, personal or customer data, or sensitive operational details in source, documentation, examples, fixtures, logs, screenshots, generated artifacts, commits, pull requests, or deployments. Use obviously fake placeholders in committed examples, keep real values only in approved ignored local secret stores, and inspect staged and generated output before publishing. If unsure, treat the value as secret and stop.
+
 ## Prerequisites
 
 Authenticate Wrangler with an API token scoped to Pages and set `CLOUDFLARE_ACCOUNT_ID`. Production planning/deployment also requires these public, non-secret application values:

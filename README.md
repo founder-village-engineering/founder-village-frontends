@@ -1,5 +1,7 @@
 # Founder Village Frontends
 
+> **Public repository safety:** This repository and its full Git history are public. Be 100% careful not to leak secrets, API keys or tokens, credentials, passwords, private keys, session material, personal or customer data, or sensitive operational details in source, documentation, examples, fixtures, logs, screenshots, generated artifacts, commits, pull requests, or deployments. Use obviously fake placeholders in committed examples, keep real values only in approved ignored local secret stores, and inspect staged and generated output before publishing. If unsure, treat the value as secret and stop.
+
 Static React applications for the Founder Village runtime. Every app is deployed to its own Cloudflare Pages project at an exact `pages.dev` origin. This repository does not deploy frontend Workers or Pages Functions.
 
 The first vertical slice is [Founder Food Deliveries](apps/founder-food-deliveries/), a responsive receipt-and-expense interface backed by the shared `founders` runtime database. The database is intentionally reusable by future founder frontends; this first app records iFood and 99Food orders and creates one matching expense atomically.
