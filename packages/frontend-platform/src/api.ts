@@ -53,32 +53,38 @@ export async function runtimeJson(
     headers.set("content-type", "application/json");
     body = JSON.stringify(request.body);
   }
-  const response = await fetcher(url, {
-    method: request.method ?? (body ? "POST" : "GET"),
-    headers,
-    body,
-    credentials: "omit",
-    cache: "no-store",
-    redirect: "error",
-    signal: AbortSignal.timeout(15_000),
-  });
-  const text = await response.text();
-  if (text.length > 1_048_576)
-    throw new Error("Runtime response was too large.");
-  let payload: unknown;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error("Runtime response was not JSON.");
+    const response = await fetcher(url, {
+      method: request.method ?? (body ? "POST" : "GET"),
+      headers,
+      body,
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error",
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    if (text.length > 1_048_576)
+      throw new Error("Runtime response was too large.");
+    let payload: unknown;
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch {
+      throw new Error("Runtime response was not JSON.");
+    }
+    if (!response.ok) {
+      const requestId =
+        payload && typeof payload === "object" && "requestId" in payload
+          ? String((payload as { requestId: unknown }).requestId)
+          : undefined;
+      throw new RuntimeRequestError(response.status, requestId);
+    }
+    return payload;
+  } finally {
+    clearTimeout(timeout);
   }
-  if (!response.ok) {
-    const requestId =
-      payload && typeof payload === "object" && "requestId" in payload
-        ? String((payload as { requestId: unknown }).requestId)
-        : undefined;
-    throw new RuntimeRequestError(response.status, requestId);
-  }
-  return payload;
 }
 
 export function uuid(): string {

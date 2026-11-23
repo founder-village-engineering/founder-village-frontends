@@ -37,8 +37,7 @@ function exactHttpsUrl(value: unknown, label: string): string {
   return value;
 }
 
-export function runtimeConfig(): RuntimeConfig {
-  const value = window.__FOUNDER_VILLAGE_CONFIG__;
+export function parseRuntimeConfig(value: unknown): RuntimeConfig {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Runtime configuration is unavailable.");
   const input = value as Record<string, unknown>;
@@ -64,6 +63,10 @@ export function runtimeConfig(): RuntimeConfig {
         ? input.audience
         : undefined,
   };
+}
+
+export function runtimeConfig(): RuntimeConfig {
+  return parseRuntimeConfig(window.__FOUNDER_VILLAGE_CONFIG__);
 }
 
 export function hasOidc(config: RuntimeConfig): config is RuntimeConfig & {

@@ -25,7 +25,9 @@
     "pages:verify": "tsx scripts/pages.ts verify --app founder-food-deliveries",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "check": "npm run contracts:check && npm run typecheck && npm test && npm run build && npm run pages:plan"
+    "security:scan": "node scripts/security-scan.ts",
+    "check": "npm run contracts:check && npm run typecheck && npm test && npm run build && npm run pages:plan && npm run pages -- plan --app founder-village-members",
+    "dev:members": "npm run dev -w @founder-village/founder-village-members"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",
@@ -44,5 +46,10 @@
     "vitest": "5.1.1",
     "wrangler": "4.165.0",
     "zod": "4.6.7"
+  },
+  "overrides": {
+    "@expo/fingerprint": {
+      "minimatch": "11.0.9"
+    }
   }
 }

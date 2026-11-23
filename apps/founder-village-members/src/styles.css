@@ -1,0 +1,39 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #080f0c;
+  color: #edf5e9;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+}
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background-image:
+    radial-gradient(
+      ellipse at 75% 23%,
+      #1c3424 0%,
+      #14231760 39%,
+      transparent 73%
+    ),
+    linear-gradient(#c8f77b0a 1px, transparent 1px),
+    linear-gradient(90deg, #c8f77b0a 1px, transparent 1px);
+  background-size:
+    auto,
+    48px 48px,
+    48px 48px;
+}
+:focus-visible {
+  outline: 2px solid #c8f77b !important;
+  outline-offset: 3px;
+}
+::selection {
+  background: #c8f77b;
+  color: #14220c;
+}

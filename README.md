@@ -6,6 +6,8 @@ Static React applications for the Founder Village runtime. Every app is deployed
 
 The first vertical slice is [Founder Food Deliveries](apps/founder-food-deliveries/), a responsive receipt-and-expense interface backed by the shared `founders` runtime database. The database is intentionally reusable by future founder frontends; this first app records iFood and 99Food orders and creates one matching expense atomically.
 
+[Founder Village Members](apps/founder-village-members/README.md) shares a TypeScript React Native interface across web, iOS, and Android. It uses its own runtime database for free member profiles, opt-in WhatsApp contact, and paid upgrades. Run `npm run dev:members` for the local web frontend.
+
 ## Repository model
 
 - `apps/<slug>/` owns one frontend and its `founder-village-app.json` manifest.
@@ -36,6 +38,19 @@ npm run dev:food-deliveries
 ```
 
 The checked-in local `runtime-config.js` points to `https://api.fv`. Production release replaces it with explicitly supplied public runtime/OIDC values.
+
+## Secret checks
+
+Install Gitleaks 8.30.1 or later on `PATH`. In a checkout without custom hooks, enable the tracked hooks with `git config --local core.hooksPath .githooks`. If you already have hooks, add `node scripts/security-scan.ts --staged` to pre-commit and `node scripts/security-scan.ts --message "$1"` to commit-msg.
+
+```sh
+npm run security:scan
+npm run security:scan -- --staged
+npm run security:scan -- --history
+npm run security:scan -- --artifact apps/founder-food-deliveries/dist
+```
+
+CI scans source and reachable history on pushes and pull requests. Use the [public repository security skill](.agents/skills/public-repo-security/SKILL.md) for manual review and handling findings.
 
 ## Add an app
 

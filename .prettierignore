@@ -5,3 +5,7 @@ coverage/
 playwright-report/
 test-results/
 apps/*/src/generated/contracts/
+
+apps/*/.expo/
+apps/*/ios/
+apps/*/android/

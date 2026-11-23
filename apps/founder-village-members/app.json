@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Founder Village Members",
+    "slug": "founder-village-members",
+    "version": "1.0.0",
+    "scheme": "com.foundervillage.members",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#080f0c",
+    "ios": {
+      "bundleIdentifier": "com.foundervillage.members",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.foundervillage.members"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-system-ui",
+      ["expo-status-bar", { "style": "light" }],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#080f0c",
+          "image": "./src/assets/icon.png",
+          "imageWidth": 128
+        }
+      ]
+    ],
+    "icon": "./src/assets/icon.png"
+  }
+}

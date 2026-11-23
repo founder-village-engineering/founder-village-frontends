@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "slug": "founder-village-members",
+  "title": "Founder Village Members",
+  "owner": "Founder Village",
+  "description": "Find other Founder Village members, connect on WhatsApp, and manage your membership.",
+  "application": "founder-village-members",
+  "pagesProject": "founder-village-members",
+  "productionOrigin": "https://founder-village-members.pages.dev",
+  "localOrigin": "https://members.fv",
+  "localPort": 43911,
+  "contractSource": "packages/frontend-contracts/founder-village-members"
+}
