@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "slug": "founder-village-team",
+  "title": "Founder Village Team",
+  "owner": "Founder Village",
+  "description": "Private team conversations and bot configurations.",
+  "application": "founder-village-team",
+  "pagesProject": "founder-village-team",
+  "productionOrigin": "https://founder-village-team.pages.dev",
+  "customOrigin": "https://team.foundervillage.xyz",
+  "localOrigin": "https://team.fv",
+  "localPort": 43912,
+  "contractSource": "packages/frontend-contracts/founder-village-team"
+}

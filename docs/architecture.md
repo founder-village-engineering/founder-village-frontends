@@ -10,6 +10,8 @@ Applications use a separate runtime database by default. That gives each product
 
 `founder-food-deliveries` is the first intentional shared-boundary frontend: its manifest maps to the `founders` application rather than an application named for the frontend. Future founder tools can map to `founders` while retaining separate Pages projects, exact origins, contracts, and UI release lifecycles.
 
+`founder-village-app` lists its existing feature frontends in `featureFrontends`. Its origin is allowed on the registered feature routes, with each request scoped to the corresponding runtime application. Contract sync bundles those feature schemas into the app’s generated `features/` directory.
+
 ## Runtime-owned contracts
 
 The runtime organizes browser-safe Zod schemas and inferred TypeScript types under `packages/frontend-contracts/<slug>/`. Its synchronizer copies only real `.ts` files to the registered frontend target, refuses symlinks and path escapes, removes stale owned files, and writes `contract-source.json` with the source, inventory, and SHA-256 digest.

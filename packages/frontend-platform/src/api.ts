@@ -25,6 +25,8 @@ export type RuntimeRequest = {
   session: BrowserSession;
   application: string;
   tenantId?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
   method?: "GET" | "POST";
   body?: unknown;
   idempotencyKey?: string;
@@ -54,7 +56,10 @@ export async function runtimeJson(
     body = JSON.stringify(request.body);
   }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    request.timeoutMs ?? 15_000,
+  );
   try {
     const response = await fetcher(url, {
       method: request.method ?? (body ? "POST" : "GET"),
@@ -63,7 +68,9 @@ export async function runtimeJson(
       credentials: "omit",
       cache: "no-store",
       redirect: "error",
-      signal: controller.signal,
+      signal: request.signal
+        ? AbortSignal.any([controller.signal, request.signal])
+        : controller.signal,
     });
     const text = await response.text();
     if (text.length > 1_048_576)

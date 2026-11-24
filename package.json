@@ -26,8 +26,10 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "security:scan": "node scripts/security-scan.ts",
-    "check": "npm run contracts:check && npm run typecheck && npm test && npm run build && npm run pages:plan && npm run pages -- plan --app founder-village-members",
-    "dev:members": "npm run dev -w @founder-village/founder-village-members"
+    "check": "npm run contracts:check && npm run typecheck && npm test && npm run build && npm run pages:plan && npm run pages -- plan --app founder-village-members && npm run pages -- plan --app founder-village-app",
+    "dev:members": "npm run dev -w @founder-village/founder-village-members",
+    "dev:team": "npm run dev -w @founder-village/founder-village-team",
+    "dev:app": "npm run dev -w @founder-village/founder-village-app"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",

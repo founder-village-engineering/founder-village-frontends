@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "frontend": "founder-village-team",
+  "application": "founder-village-team",
+  "source": "packages/frontend-contracts/founder-village-team",
+  "sha256": "3dba96b55ba22163ca9f7e35e25e36ec44af759f1b02dceb4664ec3aeca03f01",
+  "files": [
+    "index.ts"
+  ]
+}

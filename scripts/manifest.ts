@@ -8,6 +8,20 @@ export const repositoryRoot = resolve(
   "..",
 );
 
+const featureFrontendsSchema = z
+  .array(
+    z.enum([
+      "founder-food-deliveries",
+      "founder-village-members",
+      "founder-village-team",
+    ]),
+  )
+  .min(1)
+  .refine(
+    (ids) => new Set(ids).size === ids.length,
+    "duplicate feature frontend",
+  );
+
 export const appManifestSchema = z
   .object({
     version: z.literal(1),
@@ -18,11 +32,18 @@ export const appManifestSchema = z
     application: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
     pagesProject: z.string().regex(/^[a-z][a-z0-9-]{0,62}$/),
     productionOrigin: z.string().url(),
+    customOrigin: z
+      .string()
+      .regex(
+        /^https:\/\/[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?\.foundervillage\.xyz$/,
+      )
+      .optional(),
     localOrigin: z.string().url(),
     localPort: z.number().int().min(1024).max(65535),
     contractSource: z
       .string()
       .regex(/^packages\/frontend-contracts\/[a-z][a-z0-9-]{0,62}$/),
+    featureFrontends: featureFrontendsSchema.optional(),
   })
   .strict();
 

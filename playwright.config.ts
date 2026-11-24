@@ -20,6 +20,11 @@ export default defineConfig({
       url: "http://127.0.0.1:43911",
       reuseExistingServer: true,
     },
+    {
+      command: "npm run dev:app",
+      url: "http://127.0.0.1:43913",
+      reuseExistingServer: true,
+    },
   ],
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

@@ -244,22 +244,26 @@ async function plan(app: LoadedApp, production: boolean) {
   return receipt;
 }
 
-async function projects(): Promise<Array<{ name?: string }>> {
+export function projectNames(inventory: unknown): string[] {
+  if (!Array.isArray(inventory))
+    throw new Error("Wrangler project inventory was invalid");
+  return inventory.map((row) => {
+    const name = row?.name ?? row?.["Project Name"];
+    if (typeof name !== "string" || !name)
+      throw new Error("Wrangler project inventory contained an invalid name");
+    return name;
+  });
+}
+
+async function projects(): Promise<string[]> {
   const output = await run(wrangler, ["pages", "project", "list", "--json"], {
     capture: true,
   });
-  const parsed = JSON.parse(output) as unknown;
-  if (!Array.isArray(parsed))
-    throw new Error("Wrangler project inventory was invalid");
-  return parsed as Array<{ name?: string }>;
+  return projectNames(JSON.parse(output));
 }
 
 async function provision(app: LoadedApp): Promise<void> {
-  if (
-    (await projects()).some(
-      (project) => project.name === app.manifest.pagesProject,
-    )
-  ) {
+  if ((await projects()).includes(app.manifest.pagesProject)) {
     console.log(`Pages project already exists: ${app.manifest.pagesProject}`);
     return;
   }
@@ -293,11 +297,7 @@ async function gitMetadata(): Promise<{ hash?: string; dirty: boolean }> {
 
 async function deploy(app: LoadedApp): Promise<void> {
   await plan(app, true);
-  if (
-    !(await projects()).some(
-      (project) => project.name === app.manifest.pagesProject,
-    )
-  )
+  if (!(await projects()).includes(app.manifest.pagesProject))
     throw new Error(
       `Pages project ${app.manifest.pagesProject} does not exist; run the explicit provision command first`,
     );
@@ -318,7 +318,16 @@ async function deploy(app: LoadedApp): Promise<void> {
 }
 
 async function verify(app: LoadedApp): Promise<void> {
-  const response = await fetch(app.manifest.productionOrigin, {
+  for (const origin of [
+    app.manifest.productionOrigin,
+    app.manifest.customOrigin,
+  ]) {
+    if (origin) await verifyOrigin(app, origin);
+  }
+}
+
+async function verifyOrigin(app: LoadedApp, origin: string): Promise<void> {
+  const response = await fetch(origin, {
     redirect: "error",
     headers: { "user-agent": "FounderVillagePagesVerifier/1.0" },
     signal: AbortSignal.timeout(15_000),
@@ -337,7 +346,7 @@ async function verify(app: LoadedApp): Promise<void> {
     connectDirective.split(/\s+/).includes("https:")
   )
     throw new Error("deployed Pages verification failed");
-  console.log(`verified ${app.manifest.productionOrigin}`);
+  console.log(`verified ${origin}`);
 }
 
 async function main(): Promise<void> {

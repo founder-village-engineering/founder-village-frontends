@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "slug": "founder-village-app",
+  "title": "Founder Village",
+  "owner": "Founder Village",
+  "description": "Connect with members, manage your membership, log deliveries, and work with your team.",
+  "application": "founder-village-members",
+  "pagesProject": "founder-village-app",
+  "productionOrigin": "https://founder-village-app.pages.dev",
+  "localOrigin": "https://app.fv",
+  "localPort": 43913,
+  "contractSource": "packages/frontend-contracts/founder-village-app",
+  "featureFrontends": [
+    "founder-village-members",
+    "founder-food-deliveries",
+    "founder-village-team"
+  ]
+}

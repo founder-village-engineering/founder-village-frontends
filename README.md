@@ -4,6 +4,8 @@
 
 Static React applications for the Founder Village runtime. Every app is deployed to its own Cloudflare Pages project at an exact `pages.dev` origin. This repository does not deploy frontend Workers or Pages Functions.
 
+[Founder Village](apps/founder-village-app/README.md) brings the member directory, premium membership, delivery records, and team workspaces into one app. Start the local preview with `npm run dev:app`.
+
 The first vertical slice is [Founder Food Deliveries](apps/founder-food-deliveries/), a responsive receipt-and-expense interface backed by the shared `founders` runtime database. The database is intentionally reusable by future founder frontends; this first app records iFood and 99Food orders and creates one matching expense atomically.
 
 [Founder Village Members](apps/founder-village-members/README.md) shares a TypeScript React Native interface across web, iOS, and Android. It uses its own runtime database for free member profiles, opt-in WhatsApp contact, and paid upgrades. Run `npm run dev:members` for the local web frontend.
