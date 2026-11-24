@@ -16,11 +16,11 @@ Open `http://127.0.0.1:43913`. The local Founder Village edge also serves `https
 
 | Area                               | Data owner                | Behavior                                                                                                                                                                                                                  |
 | ---------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Directory, profile, and membership | `founder-village-members` | Create a free profile, find members, open WhatsApp when a member shares their number, and use the existing verified checkout for premium.                                                                                 |
-| Food deliveries                    | `founders`                | Save an existing iFood or 99Food order and its expense together. View delivery history and the workspace balance.                                                                                                         |
+| Directory, profile, and membership | `founder-village-app`     | Create a free profile, find members, open WhatsApp when a member shares their number, and use the existing verified checkout for premium.                                                                                 |
+| Food deliveries                    | `founder-village-app`     | Save an existing iFood or 99Food order and its expense together. View delivery history and the workspace balance.                                                                                                         |
 | Engineering and bot chats          | `founder-village-team`    | Create shared engineering items and move them through the work board. Manage authorized bots and resume private conversations. Generating a reply sends recent conversation context to the runtime’s configured provider. |
 
-The app uses the same data as the standalone frontends. The runtime checks access for each feature and workspace. Apply the checked-in membership checkout and team engineering migrations through the runtime migration command before serving the integrated app.
+Members and Food Deliveries share the primary database while keeping their feature access rules. Team has its own database and authorization. Use the runtime's consolidation runbook when upgrading an installation that has data in the former standalone databases.
 
 The engineering API stores encrypted item content and records revision, actor, and request ID in its private history. Team routes and provider configuration remain runtime-owned. Feature data is intended for community, delivery, and internal work.
 

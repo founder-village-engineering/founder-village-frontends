@@ -5,7 +5,7 @@ import {
   foodDeliveryInputSchema,
   type FoodDelivery,
   type FoodDeliveryInput,
-} from "./generated/contracts/features/founder-food-deliveries/index";
+} from "./generated/contracts/food-deliveries";
 import { useResource, useWrite } from "./requests";
 import { styles } from "./theme";
 import { Button, ErrorMessage } from "./ui";
@@ -84,6 +84,10 @@ export default function Deliveries({
   const [form, setForm] = useState(newForm);
   const [invalid, setInvalid] = useState("");
   const [saved, setSaved] = useState(false);
+  const subtotal = cents(form.subtotal);
+  const deliveryFee = cents(form.deliveryFee || "0");
+  const serviceFee = cents(form.serviceFee || "0");
+  const total = subtotal + deliveryFee + serviceFee;
   const field = (name: keyof typeof form) => ({
     value: form[name],
     onChangeText: (value: string) =>
@@ -94,9 +98,6 @@ export default function Deliveries({
   async function create() {
     setSaved(false);
     setInvalid("");
-    const subtotal = cents(form.subtotal);
-    const deliveryFee = cents(form.deliveryFee || "0");
-    const serviceFee = cents(form.serviceFee || "0");
     const total = subtotal + deliveryFee + serviceFee;
     if (!Number.isFinite(total) || total <= 0 || total > 10_000_000) {
       setInvalid(
@@ -213,6 +214,9 @@ export default function Deliveries({
           />
           <ErrorMessage message={invalid || write.error} />
           {saved && <Notice>Delivery and expense saved.</Notice>}
+          {Number.isFinite(total) && (
+            <Text style={styles.sectionLabel}>Total {money(total)}</Text>
+          )}
           <Button
             label="Log delivery"
             busy={write.busy}
@@ -227,12 +231,23 @@ export default function Deliveries({
           </Text>
           <RequestFeedback state={profile} loading="Loading balance…" />
           {profile.status === "ready" && (
-            <Text style={styles.sectionLabel}>
-              {money(
-                profile.data.balance.balanceCents,
-                profile.data.balance.currency,
+            <>
+              <Text style={styles.sectionLabel}>
+                {money(
+                  profile.data.balance.balanceCents,
+                  profile.data.balance.currency,
+                )}
+              </Text>
+              <Text style={styles.label}>{profile.data.fullName}</Text>
+              {profile.data.room && (
+                <Text style={styles.text}>{profile.data.room}</Text>
               )}
-            </Text>
+              {profile.data.companies.map((company) => (
+                <Text key={company.id} style={styles.text}>
+                  {company.name}
+                </Text>
+              ))}
+            </>
           )}
         </View>
         <Text accessibilityRole="header" style={styles.subheading}>

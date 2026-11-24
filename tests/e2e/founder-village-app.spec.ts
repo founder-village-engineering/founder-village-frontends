@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import type { EngineeringItem } from "../../apps/founder-village-app/src/generated/contracts/index.ts";
-import type { FoodDelivery } from "../../apps/founder-village-app/src/generated/contracts/features/founder-food-deliveries/index.ts";
-import type { Profile } from "../../apps/founder-village-app/src/generated/contracts/features/founder-village-members/index.ts";
+import type { EngineeringItem } from "../../apps/founder-village-app/src/generated/contracts/features/founder-village-team/engineering.ts";
+import type { FoodDelivery } from "../../apps/founder-village-app/src/generated/contracts/food-deliveries.ts";
+import type { Profile } from "../../apps/founder-village-app/src/generated/contracts/members.ts";
 import type {
   Conversation,
   Message,
@@ -78,7 +78,7 @@ test("free enrollment, premium status, deliveries, engineering, and private chat
     const json = (value: unknown) => route.fulfill({ json: value });
 
     if (path.startsWith("/members/")) {
-      expect(headers["x-application-id"]).toBe("founder-village-members");
+      expect(headers["x-application-id"]).toBe("founder-village-app");
       if (path === "/members/me") {
         if (write) profile = { ...data, id: randomUUID() };
         return json({ profile });
@@ -92,10 +92,13 @@ test("free enrollment, premium status, deliveries, engineering, and private chat
           offers: [],
         });
     }
-    if (path === "/food-deliveries/tenants") return json([village]);
+    if (path === "/food-deliveries/tenants") {
+      expect(headers["x-application-id"]).toBe("founder-village-app");
+      return json([village]);
+    }
     if (path === "/team/tenants") return json([team]);
     if (path === "/founders/me" || path === "/food-deliveries") {
-      expect(headers["x-application-id"]).toBe("founders");
+      expect(headers["x-application-id"]).toBe("founder-village-app");
       expect(headers["x-tenant-id"]).toBe(village.id);
       if (path === "/founders/me")
         return json({
@@ -103,7 +106,7 @@ test("free enrollment, premium status, deliveries, engineering, and private chat
           tenantId: village.id,
           fullName: "Synthetic founder",
           email: "founder@example.test",
-          companies: [],
+          companies: [{ id: randomUUID(), name: "Synthetic Canopy" }],
           balance: { currency: "BRL", balanceCents: 0 },
         });
       if (!write) return json(delivery ? [delivery] : []);
@@ -213,12 +216,16 @@ test("free enrollment, premium status, deliveries, engineering, and private chat
   await expect(page.getByText("Premium member", { exact: true })).toBeVisible();
 
   await navigate(page, "Food deliveries");
+  await expect(
+    page.getByText("Synthetic Canopy", { exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Provider order ID").fill("SYNTHETIC-ORDER");
   await page
     .getByLabel("Restaurant", { exact: true })
     .fill("Synthetic Kitchen");
   await page.getByLabel("Delivery address").fill("Synthetic reception");
   await page.getByLabel("Subtotal (BRL)").fill("42,50");
+  await expect(page.getByText(/Total R\$\s*42,50/)).toBeVisible();
   await page.getByRole("button", { name: "Log delivery" }).click();
   await expect(page.getByText("Delivery and expense saved.")).toBeVisible();
   await page.reload();

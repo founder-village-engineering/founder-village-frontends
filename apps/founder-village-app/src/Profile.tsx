@@ -4,7 +4,7 @@ import { actionError, type MemberApi } from "./api";
 import {
   profileInputSchema,
   type Profile,
-} from "./generated/contracts/features/founder-village-members/index";
+} from "./generated/contracts/members";
 import { palette, styles } from "./theme";
 import { Button, ErrorMessage } from "./ui";
 

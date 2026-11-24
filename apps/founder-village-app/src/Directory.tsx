@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { actionError, type MemberApi } from "./api";
 import { communityArtwork } from "./art";
-import type { DirectoryMember } from "./generated/contracts/features/founder-village-members/index";
+import type { DirectoryMember } from "./generated/contracts/members";
 import { openExternal } from "./session";
 import { palette, styles } from "./theme";
 import { Button, ErrorMessage, LeafMark, Loading } from "./ui";

@@ -1,3 +1,4 @@
+import { applicationId } from "./generated/contracts/index";
 import type { z } from "zod";
 import type { Requester } from "./api";
 import {
@@ -6,9 +7,8 @@ import {
   foodDeliveriesResponseSchema,
   foodDeliveryInputSchema,
   foodDeliverySchema,
-  foundersApplicationId,
   type FoodDeliveryInput,
-} from "./generated/contracts/features/founder-food-deliveries/index";
+} from "./generated/contracts/food-deliveries";
 import {
   applicationId as teamApplicationId,
   tenantsSchema,
@@ -34,7 +34,7 @@ import {
   engineeringUpdateSchema,
   type EngineeringInput,
   type EngineeringStatus,
-} from "./generated/contracts/index";
+} from "./generated/contracts/features/founder-village-team/engineering";
 
 export type Workspace = { id: string; name: string };
 
@@ -82,7 +82,7 @@ export function workspaceApi(send: Requester) {
   return {
     deliveryWorkspaces: (signal: AbortSignal) =>
       get(
-        foundersApplicationId,
+        applicationId,
         "/food-deliveries/tenants",
         founderTenantsResponseSchema,
         signal,
@@ -93,7 +93,7 @@ export function workspaceApi(send: Requester) {
       return {
         profile: (signal: AbortSignal) =>
           get(
-            foundersApplicationId,
+            applicationId,
             "/founders/me",
             founderProfileSchema,
             signal,
@@ -101,7 +101,7 @@ export function workspaceApi(send: Requester) {
           ),
         orders: (signal: AbortSignal) =>
           get(
-            foundersApplicationId,
+            applicationId,
             "/food-deliveries",
             foodDeliveriesResponseSchema,
             signal,
@@ -109,7 +109,7 @@ export function workspaceApi(send: Requester) {
           ),
         create: (input: FoodDeliveryInput, key: string) =>
           post(
-            foundersApplicationId,
+            applicationId,
             tenantId,
             "/food-deliveries",
             foodDeliverySchema,

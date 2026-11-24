@@ -1,3 +1,4 @@
+import { applicationId } from "./generated/contracts/index";
 import {
   runtimeJson,
   RuntimeRequestError,
@@ -6,7 +7,6 @@ import {
   type RuntimeRequest,
 } from "@founder-village/frontend-platform";
 import {
-  applicationId,
   communityId,
   memberResponseSchema,
   directoryResponseSchema,
@@ -17,7 +17,7 @@ import {
   deletionResponseSchema,
   type ProfileInput,
   type PaymentMethod,
-} from "./generated/contracts/features/founder-village-members/index.ts";
+} from "./generated/contracts/members.ts";
 
 export function createRequester(
   config: RuntimeConfig,

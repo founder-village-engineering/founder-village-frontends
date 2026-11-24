@@ -11,7 +11,6 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:food-deliveries": "npm run dev -w @founder-village/food-deliveries",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc -p tsconfig.tooling.json && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
@@ -19,15 +18,14 @@
     "contracts:check": "tsx scripts/check-contract-snapshots.ts",
     "contracts:workspace": "node --import tsx ../founder-village-runtime/scripts/sync-frontend-contracts.ts --check --frontends-root .",
     "pages": "tsx scripts/pages.ts",
-    "pages:plan": "tsx scripts/pages.ts plan --app founder-food-deliveries",
-    "pages:provision": "tsx scripts/pages.ts provision --app founder-food-deliveries",
-    "pages:deploy": "tsx scripts/pages.ts deploy --app founder-food-deliveries",
-    "pages:verify": "tsx scripts/pages.ts verify --app founder-food-deliveries",
+    "pages:plan": "tsx scripts/pages.ts plan --app founder-village-app",
+    "pages:provision": "tsx scripts/pages.ts provision --app founder-village-app",
+    "pages:deploy": "tsx scripts/pages.ts deploy --app founder-village-app",
+    "pages:verify": "tsx scripts/pages.ts verify --app founder-village-app",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "security:scan": "node scripts/security-scan.ts",
-    "check": "npm run contracts:check && npm run typecheck && npm test && npm run build && npm run pages:plan && npm run pages -- plan --app founder-village-members && npm run pages -- plan --app founder-village-app",
-    "dev:members": "npm run dev -w @founder-village/founder-village-members",
+    "check": "npm run contracts:check && npm run typecheck && npm test && npm run build && npm run pages:plan && npm run pages -- plan --app founder-village-team",
     "dev:team": "npm run dev -w @founder-village/founder-village-team",
     "dev:app": "npm run dev -w @founder-village/founder-village-app"
   },

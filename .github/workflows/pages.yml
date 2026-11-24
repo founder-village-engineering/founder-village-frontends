@@ -6,7 +6,7 @@ on:
         description: "Registered frontend slug"
         type: string
         required: true
-        default: founder-food-deliveries
+        default: founder-village-app
       operation:
         type: choice
         options: [plan, provision, deploy, verify]

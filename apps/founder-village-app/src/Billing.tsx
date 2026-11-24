@@ -12,7 +12,7 @@ import {
   signatureSchema,
   type CheckoutResponse,
   type PaymentMethod,
-} from "./generated/contracts/features/founder-village-members/index";
+} from "./generated/contracts/members";
 import {
   formatAmount,
   methodNames,

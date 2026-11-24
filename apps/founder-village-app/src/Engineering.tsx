@@ -12,7 +12,7 @@ import {
   engineeringStatuses,
   type EngineeringItem,
   type EngineeringStatus,
-} from "./generated/contracts/index";
+} from "./generated/contracts/features/founder-village-team/engineering";
 import { usePage, useWrite } from "./requests";
 import { styles } from "./theme";
 import { Button, ErrorMessage } from "./ui";

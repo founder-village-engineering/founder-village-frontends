@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { actionError, type MemberApi } from "./api";
-import type {
-  Membership,
-  Offer,
-} from "./generated/contracts/features/founder-village-members/index";
+import type { Membership, Offer } from "./generated/contracts/members";
 
 export type BillingProps = {
   api: MemberApi;

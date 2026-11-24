@@ -5,7 +5,7 @@ description: Audit Founder Village frontends for Portuguese-first behavior, Engl
 
 # Review Founder Village localization
 
-Use the [frontend localization standard](../localize-founder-village-frontend/SKILL.md) as the baseline. For a whole-repository audit, inventory `apps/*/founder-village-app.json` and check the shared app scaffold in `templates/app/`. Include web and native entry points for `founder-village-app` and `founder-village-members`. Inspect standalone and integrated journeys where both apps expose the same feature. Scope a change review to the affected surfaces and their shared consumers.
+Use the [frontend localization standard](../localize-founder-village-frontend/SKILL.md) as the baseline. For a whole-repository audit, inventory `apps/*/founder-village-app.json` and check the shared app scaffold in `templates/app/`. Include the primary app's web and native entry points and the Team frontend. Inspect both Team journeys where they expose the same feature. Scope a change review to the affected surfaces and their shared consumers.
 
 ## Verify behavior
 

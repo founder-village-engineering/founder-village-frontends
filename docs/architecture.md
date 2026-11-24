@@ -8,9 +8,9 @@ Each app manifest defines its slug, runtime application, Pages project/origin, l
 
 Applications use a separate runtime database by default. That gives each product an exact PostgreSQL database, Hasura source, migrations, roles, monitoring, and backup inventory. Sharing a database requires an explicit product/data-boundary decision.
 
-`founder-food-deliveries` is the first intentional shared-boundary frontend: its manifest maps to the `founders` application rather than an application named for the frontend. Future founder tools can map to `founders` while retaining separate Pages projects, exact origins, contracts, and UI release lifecycles.
+`founder-village-app` owns Members and Food Deliveries in the same application namespace. `founder-village-team` keeps the internal workspace in its own namespace.
 
-`founder-village-app` lists its existing feature frontends in `featureFrontends`. Its origin is allowed on the registered feature routes, with each request scoped to the corresponding runtime application. Contract sync bundles those feature schemas into the app’s generated `features/` directory.
+The primary app lists Team in `featureFrontends`. Its origin can call the scoped routes for both applications. Contract sync includes the primary app's schemas and bundles the canonical Team schemas into `features/founder-village-team/`.
 
 ## Runtime-owned contracts
 

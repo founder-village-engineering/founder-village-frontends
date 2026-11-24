@@ -4,11 +4,9 @@
 
 Static React applications for the Founder Village runtime. Every app is deployed to its own Cloudflare Pages project at an exact `pages.dev` origin. This repository does not deploy frontend Workers or Pages Functions.
 
-[Founder Village](apps/founder-village-app/README.md) brings the member directory, premium membership, delivery records, and team workspaces into one app. Start the local preview with `npm run dev:app`.
+[Founder Village](apps/founder-village-app/README.md) combines the member directory, premium membership, and delivery records on web, iOS, and Android. Its Team screens use the authorized Team workspace. Start the local web preview with `npm run dev:app`.
 
-The first vertical slice is [Founder Food Deliveries](apps/founder-food-deliveries/), a responsive receipt-and-expense interface backed by the shared `founders` runtime database. The database is intentionally reusable by future founder frontends; this first app records iFood and 99Food orders and creates one matching expense atomically.
-
-[Founder Village Members](apps/founder-village-members/README.md) shares a TypeScript React Native interface across web, iOS, and Android. It uses its own runtime database for free member profiles, opt-in WhatsApp contact, and paid upgrades. Run `npm run dev:members` for the local web frontend.
+[Founder Village Team](apps/founder-village-team/) provides the internal workspace and has its own runtime database. Start the local web preview with `npm run dev:team`.
 
 ## Repository model
 
@@ -37,10 +35,10 @@ npm run test:e2e
 
 `npm run check` validates generated snapshot integrity, typechecks all workspaces, runs behavior tests, builds every app, and performs a non-deployable Pages artifact plan. The Playwright suite covers desktop and mobile viewports.
 
-Run the sample app with:
+Run the primary app locally.
 
 ```sh
-npm run dev:food-deliveries
+npm run dev:app
 ```
 
 The checked-in local `runtime-config.js` points to `https://api.fv`. Production release replaces it with explicitly supplied public runtime/OIDC values.
@@ -53,7 +51,7 @@ Install Gitleaks 8.30.1 or later on `PATH`. In a checkout without custom hooks, 
 npm run security:scan
 npm run security:scan -- --staged
 npm run security:scan -- --history
-npm run security:scan -- --artifact apps/founder-food-deliveries/dist
+npm run security:scan -- --artifact apps/founder-village-app/dist
 ```
 
 CI scans source and reachable history on pushes and pull requests. Use the [public repository security skill](.agents/skills/public-repo-security/SKILL.md) for manual review and handling findings.

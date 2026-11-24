@@ -9,13 +9,7 @@ export const repositoryRoot = resolve(
 );
 
 const featureFrontendsSchema = z
-  .array(
-    z.enum([
-      "founder-food-deliveries",
-      "founder-village-members",
-      "founder-village-team",
-    ]),
-  )
+  .array(z.string().regex(/^[a-z][a-z0-9-]{0,62}$/))
   .min(1)
   .refine(
     (ids) => new Set(ids).size === ids.length,

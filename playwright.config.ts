@@ -6,20 +6,10 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:43910",
+    baseURL: "http://127.0.0.1:43913",
     trace: "retain-on-failure",
   },
   webServer: [
-    {
-      command: "npm run dev:food-deliveries",
-      url: "http://127.0.0.1:43910",
-      reuseExistingServer: true,
-    },
-    {
-      command: "npm run dev:members",
-      url: "http://127.0.0.1:43911",
-      reuseExistingServer: true,
-    },
     {
       command: "npm run dev:app",
       url: "http://127.0.0.1:43913",

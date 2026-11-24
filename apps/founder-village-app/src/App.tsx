@@ -30,7 +30,7 @@ import {
   WorkspaceGate,
   type WorkspaceAccess,
 } from "./feature-ui";
-import type { Profile } from "./generated/contracts/features/founder-village-members/index";
+import type { Profile } from "./generated/contracts/members";
 import { ProfileScreen } from "./Profile";
 import { useResource } from "./requests";
 import { screenNames, type Screen } from "./screens";

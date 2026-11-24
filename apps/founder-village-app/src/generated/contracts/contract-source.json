@@ -1,13 +1,14 @@
 {
   "version": 1,
   "frontend": "founder-village-app",
-  "application": "founder-village-members",
+  "application": "founder-village-app",
   "source": "packages/frontend-contracts/founder-village-app",
-  "sha256": "828c245ab9052130c4e8208dbbc1c9d2ffc66909f1d491963b5665e3501c90a3",
+  "sha256": "66e4ed80111c99d6d6713029f1f219be919288b9fefa831946a9f43ea59c2ac5",
   "files": [
-    "features/founder-food-deliveries/index.ts",
-    "features/founder-village-members/index.ts",
+    "features/founder-village-team/engineering.ts",
     "features/founder-village-team/index.ts",
-    "index.ts"
+    "food-deliveries.ts",
+    "index.ts",
+    "members.ts"
   ]
 }
