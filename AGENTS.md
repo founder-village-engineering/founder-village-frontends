@@ -7,5 +7,6 @@
 - `founder-village-app.json` is each app's manifest. Pages commands must go through the shared root tooling, which builds first and verifies the exact project/origin.
 - Runtime contracts under `src/generated/contracts/` are generated copies owned by the sibling runtime. Never edit them directly; update the matching runtime `packages/frontend-contracts/<slug>/` source and run the scoped sync.
 - The runtime's `config/frontends.json` is the backend origin allowlist. A Pages deployment is not ready until its exact origin, application database, contract source, and generated copy all agree.
+- Follow the [frontend localization skill](.agents/skills/localize-founder-village-frontend/SKILL.md) when building an app or changing user-facing copy or flows in any app. Brazilian Portuguese (`pt-BR`) is the first-visit default and English (`en`) is available through a visible language control. Use the [localization review skill](.agents/skills/review-founder-village-localization/SKILL.md) for bilingual coverage and behavior audits.
 - Keep frontends responsive on phones and computers, keyboard accessible, and explicit about loading, empty, error, unauthenticated, and persisted states.
 - Preserve unrelated work. Building or checking does not imply permission to commit, push, provision a Pages project, deploy, or mutate a live runtime/database.

@@ -20,6 +20,10 @@ The first vertical slice is [Founder Food Deliveries](apps/founder-food-deliveri
 
 See [architecture](docs/architecture.md) and [Pages release](docs/pages-release.md).
 
+## Localization
+
+The standard for every frontend is Brazilian Portuguese on first visit with an explicit English option. Use `$localize-founder-village-frontend` for implementation and `$review-founder-village-localization` to check coverage. [Implementation skill](.agents/skills/localize-founder-village-frontend/SKILL.md) · [Review skill](.agents/skills/review-founder-village-localization/SKILL.md)
+
 ## Local verification
 
 Requires Node 24.22.0.
@@ -67,6 +71,8 @@ npm run frontend:add -- --manifest /absolute/path/project.json \
 ```
 
 Apply only after reviewing both plans. The scaffold is identical-rerun safe and refuses to overwrite different files. Runtime onboarding creates the database/Hasura/contract locations and exact browser-origin registration; product-specific schema, routes, UX, and tests still need implementation.
+
+Build the app shell and product journeys in both languages using the [localization standard](.agents/skills/localize-founder-village-frontend/SKILL.md).
 
 ## Pages commands
 

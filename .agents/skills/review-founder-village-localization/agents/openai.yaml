@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Founder Village Localization"
+  short_description: "Check the Portuguese default and English coverage"
+  default_prompt: "Use $review-founder-village-localization to verify that this app starts in Brazilian Portuguese and supports the same journey in English."

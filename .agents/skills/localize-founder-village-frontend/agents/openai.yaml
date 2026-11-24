@@ -1,0 +1,4 @@
+interface:
+  display_name: "Localize a Founder Village Frontend"
+  short_description: "Build Portuguese and English Founder Village interfaces"
+  default_prompt: "Use $localize-founder-village-frontend to make this frontend start in Brazilian Portuguese and support switching to English."
