@@ -12,9 +12,13 @@ on:
         options: [plan, provision, deploy, verify]
         required: true
         default: deploy
+      runtime_revision:
+        description: "Production runtime commit SHA (required for primary app deploy and verify)"
+        type: string
+        required: false
 permissions: { contents: read }
 concurrency:
-  group: pages-${{ inputs.app }}-${{ inputs.operation }}
+  group: pages-${{ inputs.app }}
   cancel-in-progress: false
 jobs:
   pages:
@@ -27,11 +31,24 @@ jobs:
         with: { node-version: 24.22.0, cache: npm }
       - run: npm ci
       - run: npm run contracts:check && npm run typecheck && npm test
+      - name: Install the pinned artifact scanner
+        if: inputs.operation == 'deploy'
+        run: |
+          scan_tools="$(mktemp -d "$RUNNER_TEMP/fv-scan.XXXXXX")"
+          archive="$scan_tools/gitleaks.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 --max-time 60 \
+            --output "$archive" \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          printf '%s  %s\n' 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb "$archive" \
+            | sha256sum --check --status
+          tar -xzf "$archive" -C "$scan_tools" gitleaks
+          printf '%s\n' "$scan_tools" >> "$GITHUB_PATH"
       - name: Run shared Pages operation
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           FV_RUNTIME_API_ORIGIN: ${{ vars.FV_RUNTIME_API_ORIGIN }}
+          FV_RUNTIME_REVISION: ${{ inputs.runtime_revision }}
           FV_OIDC_AUTHORIZATION_ENDPOINT: ${{ vars.FV_OIDC_AUTHORIZATION_ENDPOINT }}
           FV_OIDC_TOKEN_ENDPOINT: ${{ vars.FV_OIDC_TOKEN_ENDPOINT }}
           FV_OIDC_CLIENT_ID: ${{ vars.FV_OIDC_CLIENT_ID }}

@@ -7,10 +7,10 @@
   "application": "founder-village-app",
   "pagesProject": "founder-village-app",
   "productionOrigin": "https://founder-village-app.pages.dev",
+  "runtimeApiOrigin": "https://api.foundervillage.org",
+  "customOrigins": ["https://founderhaus.org", "https://foundervillage.org"],
   "localOrigin": "https://app.fv",
   "localPort": 43913,
   "contractSource": "packages/frontend-contracts/founder-village-app",
-  "featureFrontends": [
-    "founder-village-team"
-  ]
+  "featureFrontends": ["founder-village-team"]
 }

@@ -16,6 +16,23 @@ const featureFrontendsSchema = z
     "duplicate feature frontend",
   );
 
+const legacyCustomOriginSchema = z
+  .string()
+  .regex(/^https:\/\/[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?\.foundervillage\.xyz$/);
+
+const customOriginsSchema = z
+  .array(
+    z.union([
+      legacyCustomOriginSchema,
+      z.enum(["https://founderhaus.org", "https://foundervillage.org"]),
+    ]),
+  )
+  .min(1)
+  .refine(
+    (origins) => new Set(origins).size === origins.length,
+    "duplicate custom origin",
+  );
+
 export const appManifestSchema = z
   .object({
     version: z.literal(1),
@@ -26,12 +43,9 @@ export const appManifestSchema = z
     application: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
     pagesProject: z.string().regex(/^[a-z][a-z0-9-]{0,62}$/),
     productionOrigin: z.string().url(),
-    customOrigin: z
-      .string()
-      .regex(
-        /^https:\/\/[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?\.foundervillage\.xyz$/,
-      )
-      .optional(),
+    runtimeApiOrigin: z.string().url().optional(),
+    customOrigin: legacyCustomOriginSchema.optional(),
+    customOrigins: customOriginsSchema.optional(),
     localOrigin: z.string().url(),
     localPort: z.number().int().min(1024).max(65535),
     contractSource: z
@@ -39,9 +53,20 @@ export const appManifestSchema = z
       .regex(/^packages\/frontend-contracts\/[a-z][a-z0-9-]{0,62}$/),
     featureFrontends: featureFrontendsSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (manifest) => !manifest.customOrigin || !manifest.customOrigins,
+    "use only one of customOrigin and customOrigins",
+  );
 
 export type AppManifest = z.infer<typeof appManifestSchema>;
+
+export function customOrigins(manifest: AppManifest): string[] {
+  return (
+    manifest.customOrigins ??
+    (manifest.customOrigin ? [manifest.customOrigin] : [])
+  );
+}
 
 export type LoadedApp = {
   directory: string;

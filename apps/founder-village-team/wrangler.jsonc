@@ -3,5 +3,5 @@
   "name": "founder-village-team",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-11-19",
-  "send_metrics": false
+  "send_metrics": false,
 }
