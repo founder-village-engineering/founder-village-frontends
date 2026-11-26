@@ -11,6 +11,7 @@
     "packages/*"
   ],
   "scripts": {
+    "check:local": "npm run format:check && npm run security:scan && npm run security:scan -- --history && npm run contracts:workspace && npm run check && npm audit --omit=dev --audit-level=high && npm run test:e2e",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc -p tsconfig.tooling.json && npm run typecheck --workspaces --if-present",
     "test": "vitest run",

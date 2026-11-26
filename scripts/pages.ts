@@ -1,15 +1,18 @@
 import { createHash, randomBytes } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
+import { constants } from "node:fs";
 import {
   lstat,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   rm,
   writeFile,
 } from "node:fs/promises";
-import { relative, resolve, sep } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { dirname, relative, resolve, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
@@ -22,15 +25,151 @@ import { parseJsonc } from "./jsonc.ts";
 import {
   customOrigins,
   loadApp,
+  pagesTargets,
+  productionOrigins,
   repositoryRoot,
   type LoadedApp,
+  type PagesTarget,
 } from "./manifest.ts";
-import { PagesDomains } from "./pages-domains.ts";
+import { PagesDomains, verifyPagesProject } from "./pages-domains.ts";
 
 const execute = promisify(execFile);
 const wrangler = resolve(repositoryRoot, "node_modules/.bin/wrangler");
 const pagesState = resolve(repositoryRoot, ".state/pages");
 const releaseOutput = resolve(repositoryRoot, "dist");
+const defaultAccountBinding = resolve(
+  repositoryRoot,
+  "../founder-village-runtime/.state/operator/founder-cloudflare.private.json",
+);
+
+type PagesCredential = Readonly<{ account: string; token: string }>;
+const bearerPattern = /^[\x21-\x7e]{1,2048}$/;
+const wranglerLoginHint = "Run npm run pages -- login and authorize Wrangler in the Founder Chrome profile.";
+
+export function pagesBuildEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(env).filter(
+      ([key, value]) =>
+        !/^(CLOUDFLARE_|CF_|WRANGLER_|FV_PAGES_API_TOKEN(?:$|_FILE$))/.test(key) &&
+        (!env.CLOUDFLARE_API_TOKEN || value !== env.CLOUDFLARE_API_TOKEN) &&
+        (!env.FV_PAGES_API_TOKEN || value !== env.FV_PAGES_API_TOKEN),
+    ),
+  );
+}
+
+async function protectedText(path: string, mounted = false) {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const stat = await file.stat();
+    if (!stat.isFile() || (stat.uid !== process.getuid?.() && !(mounted && stat.uid === 0)) || (stat.mode & 0o077) !== 0 || stat.size > 65536)
+      throw new Error("unsafe private Pages input");
+    return await file.readFile("utf8");
+  } finally { await file.close(); }
+}
+
+async function pagesAccount(env: NodeJS.ProcessEnv): Promise<string> {
+  let binding: { account_id?: unknown; zone_name?: unknown };
+  try {
+    binding = JSON.parse(await protectedText(env.FV_PAGES_CLOUDFLARE_BINDING ?? defaultAccountBinding));
+  } catch {
+    throw new Error(
+      "Pages requires the owner-only Founder Cloudflare account binding.",
+    );
+  }
+  const account = binding?.account_id;
+  if (typeof account !== "string" || !/^[0-9a-f]{32}$/.test(account) || binding.zone_name !== "foundervillage.org" ||
+      (env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_ACCOUNT_ID !== account))
+    throw new Error("Pages credential differs from the bound Founder account.");
+  return account;
+}
+
+export async function pagesCredential(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<PagesCredential> {
+  if (env.CLOUDFLARE_AUTH_PROFILE)
+    throw new Error("Pages uploads require an explicit Founder account bearer.");
+  const account = await pagesAccount(env);
+  let token = env.FV_PAGES_API_TOKEN ?? (env.CLOUDFLARE_ACCOUNT_ID === account ? env.CLOUDFLARE_API_TOKEN : undefined);
+  if (!token || env.FV_PAGES_API_TOKEN_FILE) {
+    const path = env.FV_PAGES_API_TOKEN_FILE ?? resolve(env.CREDENTIALS_DIRECTORY ?? resolve(homedir(), ".config/founder-village/production/credentials"), "FV_PAGES_API_TOKEN");
+    token = await protectedText(path, true)
+      .then((value) => value.trim())
+      .catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT" && !env.FV_PAGES_API_TOKEN_FILE)
+          return undefined;
+        throw new Error("The configured Pages credential file must be readable and owner-only.");
+      });
+  }
+  token ??= await wranglerSessionToken(account, env);
+  if (!bearerPattern.test(token))
+    throw new Error("The configured Pages credential is invalid.");
+  return { account, token };
+}
+
+function wranglerEnvironment(
+  account: string,
+  directory: string,
+): NodeJS.ProcessEnv {
+  return {
+    PATH: `${dirname(process.execPath)}:/usr/bin:/bin`,
+    HOME: directory,
+    XDG_CONFIG_HOME: directory,
+    XDG_CACHE_HOME: directory,
+    CLOUDFLARE_ACCOUNT_ID: account,
+    CLOUDFLARE_API_BASE_URL: "https://api.cloudflare.com/client/v4",
+    CI: "true",
+    WRANGLER_SEND_METRICS: "false",
+  };
+}
+
+export function pagesUploaderEnvironment(
+  credential: PagesCredential,
+  directory: string,
+): NodeJS.ProcessEnv {
+  return {
+    ...wranglerEnvironment(credential.account, directory),
+    CLOUDFLARE_API_TOKEN: credential.token,
+  };
+}
+
+async function wranglerSessionEnvironment(
+  account: string,
+  env: NodeJS.ProcessEnv,
+  create = false,
+): Promise<NodeJS.ProcessEnv> {
+  const directory = resolve(
+    env.HOME ?? homedir(),
+    ".config/founder-village/production/wrangler",
+  );
+  if (create) await mkdir(directory, { recursive: true, mode: 0o700 });
+  const state = await lstat(directory).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") throw new Error(wranglerLoginHint);
+    throw new Error("Could not access the Founder Wrangler login directory.");
+  });
+  if (!state.isDirectory() || state.uid !== process.getuid?.() || (state.mode & 0o077) !== 0)
+    throw new Error("The Founder Wrangler login directory must be owner-only.");
+  return wranglerEnvironment(account, directory);
+}
+
+async function wranglerSessionToken(
+  account: string,
+  env: NodeJS.ProcessEnv,
+): Promise<string> {
+  const session = await wranglerSessionEnvironment(account, env);
+  try {
+    const output = await runWrangler(["auth", "token", "--json"], () => session);
+    const credential = z.object({
+      type: z.literal("oauth"),
+      token: z.string().regex(bearerPattern),
+    }).safeParse(JSON.parse(output));
+    if (credential.success) return credential.data.token;
+  } catch {
+    // Wrangler manages refresh, storage, and expiry. Its raw output stays private.
+  }
+  throw new Error(`The Founder Wrangler login is unavailable. ${wranglerLoginHint}`);
+}
 
 type PublicRuntimeConfig = {
   apiOrigin: string;
@@ -66,7 +205,7 @@ async function run(
   options: { cwd?: string; capture?: boolean; env?: NodeJS.ProcessEnv } = {},
 ): Promise<string> {
   const env = {
-    ...(options.env ?? process.env),
+    ...(options.env ?? pagesBuildEnvironment()),
     WRANGLER_SEND_METRICS: "false",
   };
   if (options.capture) {
@@ -97,6 +236,51 @@ async function run(
   return "";
 }
 
+async function runWrangler(
+  args: string[],
+  environment: (isolated: string) => NodeJS.ProcessEnv,
+  options: { cwd?: string; capture?: boolean } = {},
+): Promise<string> {
+  const isolated = await mkdtemp(resolve(tmpdir(), "fv-pages-"));
+  try {
+    const blankEnv = resolve(isolated, "empty.env");
+    await writeFile(blankEnv, "", { mode: 0o600, flag: "wx" });
+    return await run(wrangler, [...args, "--env-file", blankEnv], {
+      cwd: options.cwd ?? isolated,
+      capture: options.capture ?? true,
+      env: environment(isolated),
+    });
+  } finally {
+    await rm(isolated, { recursive: true, force: true });
+  }
+}
+
+async function runPagesUploader(
+  credential: PagesCredential,
+  args: string[],
+  cwd = repositoryRoot,
+): Promise<string> {
+  return runWrangler(args, (isolated) => pagesUploaderEnvironment(credential, isolated), { cwd });
+}
+
+async function login(): Promise<void> {
+  const account = await pagesAccount(process.env);
+  const session = await wranglerSessionEnvironment(account, process.env, true);
+  const previousMask = process.umask(0o077);
+  try {
+    await runWrangler(
+      ["login", "--device", "--browser=false", "--use-keyring", "--scopes", "account:read", "user:read", "pages:write"],
+      () => session,
+      { capture: false },
+    );
+  } finally {
+    process.umask(previousMask);
+  }
+  const token = await wranglerSessionToken(account, process.env);
+  await projects({ account, token });
+  console.log("Wrangler login verified for the bound Founder account.");
+}
+
 function exactHttps(value: string, label: string, originOnly: boolean): string {
   const url = URL.parse(value);
   if (
@@ -113,17 +297,14 @@ function exactHttps(value: string, label: string, originOnly: boolean): string {
   return value;
 }
 
-function productionRuntimeConfig(app: LoadedApp): PublicRuntimeConfig {
+export function productionRuntimeConfig(app: LoadedApp, pagesOnly = false): PublicRuntimeConfig {
   const apiOrigin =
     process.env.FV_RUNTIME_API_ORIGIN || app.manifest.runtimeApiOrigin;
   const authorizationEndpoint = process.env.FV_OIDC_AUTHORIZATION_ENDPOINT;
   const tokenEndpoint = process.env.FV_OIDC_TOKEN_ENDPOINT;
   const clientId = process.env.FV_OIDC_CLIENT_ID;
   const audience = process.env.FV_OIDC_AUDIENCE;
-  if (!apiOrigin || !authorizationEndpoint || !tokenEndpoint || !clientId)
-    throw new Error(
-      "FV_RUNTIME_API_ORIGIN, FV_OIDC_AUTHORIZATION_ENDPOINT, FV_OIDC_TOKEN_ENDPOINT, and FV_OIDC_CLIENT_ID are required",
-    );
+  if (!apiOrigin) throw new Error("A registered public runtime API origin is required");
   const api = new URL(exactHttps(apiOrigin, "runtime API", true));
   if (
     app.manifest.runtimeApiOrigin &&
@@ -137,6 +318,10 @@ function productionRuntimeConfig(app: LoadedApp): PublicRuntimeConfig {
     api.hostname.endsWith(".example.com")
   )
     throw new Error("runtime API must not be a placeholder or local hostname");
+  if (pagesOnly && [authorizationEndpoint, tokenEndpoint, clientId, audience].every(value => value === undefined))
+    return { apiOrigin: api.origin };
+  if (!authorizationEndpoint || !tokenEndpoint || !clientId)
+    throw new Error("The public OIDC endpoints and client ID must be supplied together");
   if (clientId.length > 512 || (audience?.length ?? 0) > 512)
     throw new Error("OIDC public identifier is too long");
   return {
@@ -161,12 +346,8 @@ function testRuntimeConfig(): PublicRuntimeConfig {
 }
 
 async function build(app: LoadedApp, dist: string): Promise<void> {
-  const env = { ...process.env };
-  delete env.CLOUDFLARE_ACCOUNT_ID;
-  delete env.CLOUDFLARE_API_TOKEN;
   await run("npm", ["run", "build", "--", "--outDir", dist], {
     cwd: app.directory,
-    env,
   });
 }
 
@@ -284,6 +465,7 @@ async function inspect(
     app: app.manifest.slug,
     pagesProject: app.manifest.pagesProject,
     productionOrigin: app.manifest.productionOrigin,
+    pagesTargets: pagesTargets(app.manifest),
     customOrigins: customOrigins(app.manifest),
     configuration: mode,
     files: files.length,
@@ -348,35 +530,72 @@ export function projectNames(inventory: unknown): string[] {
   });
 }
 
-async function projects(): Promise<string[]> {
-  const output = await run(wrangler, ["pages", "project", "list", "--json"], {
-    capture: true,
-  });
+async function projects(credential: PagesCredential): Promise<string[]> {
+  const output = await runPagesUploader(credential, [
+    "pages",
+    "project",
+    "list",
+    "--json",
+  ]);
   return projectNames(JSON.parse(output));
 }
 
-async function provision(app: LoadedApp): Promise<void> {
-  const domains = pagesDomains(app);
-  await domains?.preflight();
-  if ((await projects()).includes(app.manifest.pagesProject)) {
-    await domains?.verifyProject();
-    console.log(`Pages project already exists: ${app.manifest.pagesProject}`);
-    return;
-  }
-  await run(
-    wrangler,
+type PagesDeployment = PagesTarget & { deployed?: boolean };
+
+async function projectDeployments(
+  app: LoadedApp,
+  credential: PagesCredential,
+  provider: PagesDomains,
+  allowMissing: boolean,
+): Promise<PagesDeployment[]> {
+  const inventory = new Set(await projects(credential));
+  return Promise.all(
+    pagesTargets(app.manifest).map(async (target) => {
+      if (inventory.has(target.pagesProject))
+        return { ...target, ...(await provider.verifyProject(target)) };
+      if (!allowMissing)
+        throw new Error(
+          `Pages project ${target.pagesProject} does not exist; run the explicit provision command first`,
+        );
+      return target;
+    }),
+  );
+}
+
+async function createProject(
+  app: LoadedApp,
+  credential: PagesCredential,
+  provider: PagesDomains,
+  target: PagesTarget,
+): Promise<void> {
+  await runPagesUploader(
+    credential,
     [
       "pages",
       "project",
       "create",
-      app.manifest.pagesProject,
+      target.pagesProject,
       "--production-branch",
       "main",
+      "--force",
     ],
-    { cwd: app.directory, capture: true },
+    app.directory,
   );
-  await domains?.verifyProject();
-  console.log(`Pages project provisioned: ${app.manifest.pagesProject}`);
+  await provider.verifyProject(target);
+  console.log(`Pages project provisioned: ${target.pagesProject}`);
+}
+
+async function provision(app: LoadedApp, pagesOnly = false): Promise<void> {
+  const credential = await pagesCredential();
+  const domains = pagesOnly ? undefined : pagesDomains(app, credential);
+  const provider = domains ?? new PagesDomains(app.manifest, credential);
+  await domains?.preflight();
+  const targets = await projectDeployments(app, credential, provider, true);
+  for (const target of targets) {
+    if (target.deployed === undefined)
+      await createProject(app, credential, provider, target);
+    else console.log(`Pages project already exists: ${target.pagesProject}`);
+  }
 }
 
 async function gitMetadata(): Promise<{ hash?: string; dirty: boolean }> {
@@ -393,9 +612,9 @@ async function gitMetadata(): Promise<{ hash?: string; dirty: boolean }> {
   }
 }
 
-function pagesDomains(app: LoadedApp): PagesDomains | undefined {
+function pagesDomains(app: LoadedApp, credential: PagesCredential): PagesDomains | undefined {
   return app.manifest.customOrigins
-    ? new PagesDomains(app.manifest)
+    ? new PagesDomains(app.manifest, credential)
     : undefined;
 }
 
@@ -414,23 +633,130 @@ function runtimeRevision(
   return expected.data;
 }
 
-async function deploy(app: LoadedApp): Promise<void> {
-  const config = productionRuntimeConfig(app);
-  const revision = runtimeRevision(app, true);
+async function siteConfig(
+  app: LoadedApp,
+  targets?: PagesDeployment[],
+): Promise<PublicRuntimeConfig> {
+  const configured = productionRuntimeConfig(app, true);
+  if (hasOidc(configured)) return configured;
+  if (targets) {
+    const existing = await Promise.all(
+      targets
+        .filter(({ deployed }) => deployed)
+        .map(({ productionOrigin }) =>
+          verifyOrigin(app, productionOrigin, undefined, true),
+        ),
+    );
+    const [current, ...others] = existing;
+    if (!current) return configured;
+    if (
+      others.some(
+        ({ release }) => release.configSha256 !== current.release.configSha256,
+      )
+    )
+      throw new Error(
+        "The Pages projects have different runtime settings. Supply the public OIDC configuration to deploy.",
+      );
+    return current.settings;
+  }
+  // Retain a prior deployment's registered sign-in on subsequent static releases.
+  // The project may have no public DNS or release marker before its first upload.
+  const marker = await publicRequest(app.manifest.productionOrigin + "/release.json").catch((error: Error & { cause?: { code?: string } }) => {
+    if (error.cause?.code === "ENOTFOUND") return undefined;
+    throw error;
+  });
+  if (!marker) return configured;
+  await marker.body?.cancel();
+  if (marker.status === 404) return configured;
+  if (!marker.ok) throw new Error("Cannot verify the existing Pages release before publishing");
+  return (await verifyOrigin(app, app.manifest.productionOrigin, undefined, true)).settings;
+}
+
+async function releaseArtifact(app: LoadedApp, config: PublicRuntimeConfig, dist: string) {
   const source = await gitMetadata();
   if (!source.hash || source.dirty)
     throw new Error("production Pages deploy requires a clean Git worktree");
-  const domains = pagesDomains(app);
-  await domains?.preflight();
-  if (!(await projects()).includes(app.manifest.pagesProject))
-    throw new Error(
-      `Pages project ${app.manifest.pagesProject} does not exist; run the explicit provision command first`,
+  const release = await plan(app, config, dist);
+  if (release.revision !== source.hash || release.dirty)
+    throw new Error("frontend source changed while building the production artifact");
+  await run("npm", ["run", "security:scan", "--", "--artifact", dist]);
+  return { release, revision: source.hash };
+}
+
+async function projectDeploymentsFromCf(
+  app: LoadedApp,
+  profile: string,
+): Promise<PagesDeployment[]> {
+  const account = await pagesAccount(process.env);
+  const cf = resolve(repositoryRoot, "../founder-village-runtime/node_modules/.bin/cf");
+  const cwd = await mkdtemp(resolve(tmpdir(), "fv-pages-check-"));
+  try {
+    return await Promise.all(
+      pagesTargets(app.manifest).map(async (target) => {
+        const output = await run(
+          cf,
+          ["pages", "get", target.pagesProject, "--profile", profile, "--quiet"],
+          {
+            cwd,
+            capture: true,
+            env: {
+              ...pagesBuildEnvironment(),
+              CLOUDFLARE_ACCOUNT_ID: account,
+              CLOUDFLARE_API_BASE_URL: "https://api.cloudflare.com/client/v4",
+              CF_TELEMETRY_DISABLED: "1",
+            },
+          },
+        );
+        let project: { result?: unknown } | undefined;
+        try {
+          project = JSON.parse(output);
+        } catch {
+          throw new Error(`cf did not return a project record for ${target.pagesProject}`);
+        }
+        return { ...target, ...verifyPagesProject(target, project?.result ?? project) };
+      }),
     );
-  await domains?.verifyProject();
-  await Promise.all([
-    verifyRuntime(app, config.apiOrigin, revision),
-    verifyTokenOrigins(app, config),
-  ]);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+async function bundle(app: LoadedApp, profile?: string) {
+  const targets = profile ? await projectDeploymentsFromCf(app, profile) : undefined;
+  const config = await siteConfig(app, targets);
+  await mkdir(releaseOutput, {recursive:true});
+  const staging = await mkdtemp(resolve(releaseOutput, app.manifest.pagesProject + "-"));
+  const dist = resolve(staging, "dist");
+  try {
+    const {revision} = await releaseArtifact(app, config, dist);
+    const archive = resolve(staging, app.manifest.pagesProject + "-" + revision + ".zip");
+    await run("zip", ["-q", "-X", "-r", archive, "."], {cwd: dist});
+    console.log(archive);
+  } finally {
+    await rm(dist, {recursive:true,force:true});
+  }
+}
+
+async function deploy(app: LoadedApp, pagesOnly = false): Promise<void> {
+  const credential = await pagesCredential();
+  const revision = pagesOnly ? undefined : runtimeRevision(app, true);
+  const domains = pagesOnly ? undefined : pagesDomains(app, credential);
+  const provider = domains ?? new PagesDomains(app.manifest, credential);
+  await domains?.preflight();
+  const targets = await projectDeployments(
+    app,
+    credential,
+    provider,
+    pagesOnly,
+  );
+  const config = pagesOnly
+    ? await siteConfig(app, targets)
+    : productionRuntimeConfig(app);
+  if (!pagesOnly)
+    await Promise.all([
+      verifyRuntime(app, config.apiOrigin, revision),
+      verifyTokenOrigins(app, config),
+    ]);
   await mkdir(releaseOutput, { recursive: true });
   const staging = await mkdtemp(
     resolve(releaseOutput, `${app.manifest.slug}-`),
@@ -438,34 +764,46 @@ async function deploy(app: LoadedApp): Promise<void> {
   const dist = resolve(staging, "dist");
   let release: Release;
   try {
-    release = await plan(app, config, dist);
-    if (release.revision !== source.hash || release.dirty)
-      throw new Error(
-        "frontend source changed while building the production artifact",
-      );
-    await run("npm", ["run", "security:scan", "--", "--artifact", dist]);
-    await run(
-      wrangler,
-      [
-        "pages",
-        "deploy",
-        dist,
-        "--project-name",
-        app.manifest.pagesProject,
-        "--branch",
-        "main",
-        "--commit-dirty=false",
-        "--commit-hash",
-        source.hash,
-      ],
-      { cwd: app.directory, capture: true },
-    );
+    const artifact = await releaseArtifact(app, config, dist);
+    release = artifact.release;
+    for (const target of targets) {
+      if (target.deployed === undefined)
+        await createProject(app, credential, provider, target);
+    }
+    for (const target of targets) {
+      await runPagesUploader(
+        credential,
+        [
+          "pages",
+          "deploy",
+          dist,
+          "--project-name",
+          target.pagesProject,
+          "--branch",
+          "main",
+          "--commit-dirty=false",
+          "--commit-hash",
+          artifact.revision,
+          "--force",
+        ],
+        app.directory,
+      ).catch((cause) => {
+        throw new Error(`Upload failed for ${target.productionOrigin}`, {
+          cause,
+        });
+      });
+    }
   } finally {
     await rm(staging, { recursive: true, force: true });
   }
-  await waitFor("the production Pages upload", () =>
-    verifyOrigin(app, app.manifest.productionOrigin, release),
+  await Promise.all(
+    targets.map(({ productionOrigin }) =>
+      waitFor(productionOrigin, () =>
+        verifyOrigin(app, productionOrigin, release, pagesOnly),
+      ),
+    ),
   );
+  if (pagesOnly) return;
   await domains?.attach();
   await waitFor("Pages custom domain activation", async () => {
     if (domains && !(await domains.active()))
@@ -500,6 +838,23 @@ async function verifyAliases(app: LoadedApp, release: Release) {
   );
 }
 
+async function verifyPages(app: LoadedApp, pagesOnly = false) {
+  const result = await verifyOrigin(
+    app,
+    app.manifest.productionOrigin,
+    undefined,
+    pagesOnly,
+  );
+  await Promise.all(
+    pagesTargets(app.manifest)
+      .slice(1)
+      .map(({ productionOrigin }) =>
+        verifyOrigin(app, productionOrigin, result.release, pagesOnly),
+      ),
+  );
+  return result;
+}
+
 async function verify(app: LoadedApp, production: boolean): Promise<void> {
   const revision = runtimeRevision(app, production);
   const expectedConfig = production ? productionRuntimeConfig(app) : undefined;
@@ -508,10 +863,7 @@ async function verify(app: LoadedApp, production: boolean): Promise<void> {
     throw new Error(
       "production Pages verification requires a clean Git worktree",
     );
-  const { release, settings } = await verifyOrigin(
-    app,
-    app.manifest.productionOrigin,
-  );
+  const { release, settings } = await verifyPages(app);
   if (source && (release.revision !== source.hash || release.dirty))
     throw new Error(
       "deployed Pages revision differs from the current checkout",
@@ -550,10 +902,7 @@ async function verifyTokenOrigins(
   if (!hasOidc(config))
     throw new Error("primary app OIDC configuration is incomplete");
   const { clientId, tokenEndpoint } = config;
-  const origins = [
-    app.manifest.productionOrigin,
-    ...customOrigins(app.manifest),
-  ];
+  const origins = productionOrigins(app.manifest);
   await Promise.all(
     origins.map(async (origin) => {
       const response = await publicRequest(tokenEndpoint, {
@@ -608,10 +957,7 @@ async function verifyRuntime(
       : app.manifest.slug === "founder-village-team"
         ? ["/team/tenants"]
         : [];
-  const origins = [
-    app.manifest.productionOrigin,
-    ...customOrigins(app.manifest),
-  ];
+  const origins = productionOrigins(app.manifest);
   await Promise.all(
     origins.flatMap((origin) =>
       paths.map(async (path) => {
@@ -648,6 +994,7 @@ async function verifyOrigin(
   app: LoadedApp,
   origin: string,
   expected?: Release,
+  pagesOnly = false,
 ) {
   const [response, callback, metadata, config] = await Promise.all([
     publicRequest(origin),
@@ -657,6 +1004,15 @@ async function verifyOrigin(
   ]).catch(() => {
     throw new Error(`could not reach all Pages paths on ${origin}`);
   });
+  for (const [path, result] of [
+    ["/", response],
+    ["/auth/callback", callback],
+    ["/release.json", metadata],
+    ["/runtime-config.js", config],
+  ] as const) {
+    if (!result.ok)
+      throw new Error(`${origin}${path} returned HTTP ${result.status}`);
+  }
   const [body, callbackBody, runtimeScriptBody, marker] = await Promise.all([
     response.text(),
     callback.text(),
@@ -670,10 +1026,6 @@ async function verifyOrigin(
     .map((entry) => entry.trim())
     .find((entry) => entry.startsWith("connect-src "));
   if (
-    !response.ok ||
-    !callback.ok ||
-    !metadata.ok ||
-    !config.ok ||
     !release?.revision ||
     release.app !== app.manifest.slug ||
     release.indexSha256 !== sha256(body) ||
@@ -698,7 +1050,7 @@ async function verifyOrigin(
   } catch {
     throw new Error(`deployed runtime configuration is invalid on ${origin}`);
   }
-  if (!hasOidc(settings))
+  if (!pagesOnly && !hasOidc(settings))
     throw new Error(`deployed OIDC configuration is incomplete on ${origin}`);
   const { apiOrigin } = settings;
   if (
@@ -712,7 +1064,7 @@ async function verifyOrigin(
   const expectedConnections = new Set([
     "'self'",
     apiOrigin,
-    new URL(settings.tokenEndpoint).origin,
+    ...(settings.tokenEndpoint ? [new URL(settings.tokenEndpoint).origin] : []),
   ]);
   if (
     connections.size !== expectedConnections.size ||
@@ -738,18 +1090,36 @@ async function verifyOrigin(
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  if (!command || !["plan", "provision", "deploy", "verify"].includes(command))
+  if (command === "login") return login();
+  if (!command || !["plan", "provision", "deploy", "verify", "bundle"].includes(command))
     throw new Error(
-      "usage: pages.ts <plan|provision|deploy|verify> --app <slug>",
+      "usage: pages.ts login | <plan|provision|deploy|verify|bundle> --app <slug> [--pages-only]",
     );
   const slug = option("--app");
   if (!slug) throw new Error("--app is required");
+  const pagesOnly = process.argv.includes("--pages-only");
+  if (command === "deploy" || command === "provision") {
+    const options = process.argv
+      .slice(3)
+      .filter((arg) => arg !== "--production" && arg !== "--pages-only");
+    if (options.length !== 2 || options[0] !== "--app" || options[1] !== slug)
+      throw new Error(
+        "Supply Pages mutation credentials through the Founder Wrangler login or protected credential store. Select the target with --app.",
+      );
+  }
   const app = await loadApp(slug);
   const production = process.argv.includes("--production");
   if (command === "plan")
     await plan(app, production ? productionRuntimeConfig(app) : undefined);
-  else if (command === "provision") await provision(app);
-  else if (command === "deploy") await deploy(app);
+  else if (command === "bundle") await bundle(app, option("--cf-profile"));
+  else if (command === "provision") await provision(app, pagesOnly);
+  else if (command === "deploy") await deploy(app, pagesOnly);
+  else if (pagesOnly) {
+    const { release } = await verifyPages(app, true);
+    const source = await gitMetadata();
+    if (source.dirty || release.dirty || !source.hash || release.revision !== source.hash)
+      throw new Error("Live Pages release differs from the clean frontend checkout");
+  }
   else await verify(app, production);
 }
 

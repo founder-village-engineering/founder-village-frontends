@@ -4,19 +4,19 @@
 
 ## One manifest, two repositories
 
-Each app manifest defines its slug, runtime application, Pages project/origin, local HTTPS origin/port, and runtime contract source. The frontend scaffold and runtime onboarding scripts parse the same strict shape. Runtime `config/frontends.json` remains authoritative for browser origins and application mapping.
+Each app manifest defines its slug, runtime application, primary Pages project and origin, optional `additionalPagesProjects`, local HTTPS origin and port, and runtime contract source. The frontend scaffold and runtime onboarding scripts validate that shape. Runtime `config/frontends.json` remains authoritative for browser origins and application mapping.
 
 Applications use a separate runtime database by default. That gives each product an exact PostgreSQL database, Hasura source, migrations, roles, monitoring, and backup inventory. Sharing a database requires an explicit product/data-boundary decision.
 
 `founder-village-app` owns Members and Food Deliveries in the same application namespace. `founder-village-team` keeps the internal workspace in its own namespace.
 
-The primary app lists Team in `featureFrontends`. Its origin can call the scoped routes for both applications. Contract sync includes the primary app's schemas and bundles the canonical Team schemas into `features/founder-village-team/`.
+The primary app lists Team in `featureFrontends`. Its registered origins can call the scoped routes for both applications. Contract sync includes the primary app's schemas and bundles the canonical Team schemas into `features/founder-village-team/`.
 
 ## Runtime-owned contracts
 
 The runtime organizes browser-safe Zod schemas and inferred TypeScript types under `packages/frontend-contracts/<slug>/`. Its synchronizer copies only real `.ts` files to the registered frontend target, refuses symlinks and path escapes, removes stale owned files, and writes `contract-source.json` with the source, inventory, and SHA-256 digest.
 
-The frontend checks the digest without trusting source imports. A runtime push runs a cross-repository workflow that opens a generated-contract pull request when its token is configured. Local development can run the runtime's `frontend-contracts:watch` command for near-immediate copies.
+The frontend checks the digest without trusting source imports. The workstation’s `frontend-contracts:sync` or `frontend-contracts:watch` copies changes into the sibling checkout. `npm run check:local` compares both trees before release.
 
 Contract synchronization rejects symlinks in both canonical sources and generated target ancestors, so automation cannot be redirected outside either repository.
 

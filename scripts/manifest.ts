@@ -33,6 +33,8 @@ const customOriginsSchema = z
     "duplicate custom origin",
   );
 
+const pagesProjectSchema = z.string().regex(/^[a-z][a-z0-9-]{0,62}$/);
+
 export const appManifestSchema = z
   .object({
     version: z.literal(1),
@@ -41,8 +43,9 @@ export const appManifestSchema = z
     owner: z.string().min(1).max(100),
     description: z.string().min(1).max(240),
     application: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/),
-    pagesProject: z.string().regex(/^[a-z][a-z0-9-]{0,62}$/),
+    pagesProject: pagesProjectSchema,
     productionOrigin: z.string().url(),
+    additionalPagesProjects: z.array(pagesProjectSchema).min(1).optional(),
     runtimeApiOrigin: z.string().url().optional(),
     customOrigin: legacyCustomOriginSchema.optional(),
     customOrigins: customOriginsSchema.optional(),
@@ -57,9 +60,37 @@ export const appManifestSchema = z
   .refine(
     (manifest) => !manifest.customOrigin || !manifest.customOrigins,
     "use only one of customOrigin and customOrigins",
-  );
+  )
+  .refine(({ pagesProject, additionalPagesProjects = [] }) => {
+    const projects = [pagesProject, ...additionalPagesProjects];
+    return new Set(projects).size === projects.length;
+  }, "duplicate Pages project");
 
 export type AppManifest = z.infer<typeof appManifestSchema>;
+export type PagesTarget = Pick<
+  AppManifest,
+  "pagesProject" | "productionOrigin"
+>;
+
+export function pagesTargets(manifest: AppManifest): PagesTarget[] {
+  return [
+    {
+      pagesProject: manifest.pagesProject,
+      productionOrigin: manifest.productionOrigin,
+    },
+    ...(manifest.additionalPagesProjects ?? []).map((pagesProject) => ({
+      pagesProject,
+      productionOrigin: `https://${pagesProject}.pages.dev`,
+    })),
+  ];
+}
+
+export function productionOrigins(manifest: AppManifest): string[] {
+  return [
+    ...pagesTargets(manifest).map(({ productionOrigin }) => productionOrigin),
+    ...customOrigins(manifest),
+  ];
+}
 
 export function customOrigins(manifest: AppManifest): string[] {
   return (

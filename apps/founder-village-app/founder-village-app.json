@@ -7,6 +7,7 @@
   "application": "founder-village-app",
   "pagesProject": "founder-village-app",
   "productionOrigin": "https://founder-village-app.pages.dev",
+  "additionalPagesProjects": ["founder-village-apps"],
   "runtimeApiOrigin": "https://api.foundervillage.org",
   "customOrigins": ["https://founderhaus.org", "https://foundervillage.org"],
   "localOrigin": "https://app.fv",

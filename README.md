@@ -13,7 +13,7 @@ Static React applications for the Founder Village runtime. Every app is deployed
 - `apps/<slug>/` owns one frontend and its `founder-village-app.json` manifest.
 - `packages/frontend-platform/` owns shared public runtime config, OIDC authorization-code-with-PKCE, and API transport.
 - `templates/app/` and `scripts/scaffold-app.ts` provide the repeatable static app scaffold.
-- `scripts/pages.ts` is the single Pages plan/provision/deploy/verify implementation for every app.
+- `scripts/pages.ts` is the shared Pages release implementation. Accepted `origin/main` pushes can publish the primary app from a configured release workstation. [Pages release](docs/pages-release.md#deploy-after-a-main-push)
 - `src/generated/contracts/` is copied from `founder-village-runtime/packages/frontend-contracts/<slug>/`; never edit it by hand.
 
 See [architecture](docs/architecture.md) and [Pages release](docs/pages-release.md).
@@ -54,7 +54,7 @@ npm run security:scan -- --history
 npm run security:scan -- --artifact apps/founder-village-app/dist
 ```
 
-CI scans source and reachable history on pushes and pull requests. Use the [public repository security skill](.agents/skills/public-repo-security/SKILL.md) for manual review and handling findings.
+`npm run check:local` scans source and reachable history, verifies the sibling runtime contracts, builds the applications, and runs browser tests on the workstation. Use the [public repository security skill](.agents/skills/public-repo-security/SKILL.md) for manual review and handling findings.
 
 ## Add an app
 

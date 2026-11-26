@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { customOrigins, type AppManifest } from "./manifest.ts";
+import { customOrigins, type AppManifest, type PagesTarget } from "./manifest.ts";
 
 const zoneSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{32}$/),
@@ -18,6 +18,7 @@ const projectSchema = z.object({
   subdomain: z.string(),
   production_branch: z.string(),
   source: z.unknown().nullish(),
+  canonical_deployment: z.object({ id: z.string().min(1) }).nullish(),
 });
 const domainSchema = z.object({ name: z.string(), status: z.string() });
 const envelopeSchema = z.object({
@@ -29,6 +30,23 @@ const envelopeSchema = z.object({
 type DnsRecord = z.infer<typeof recordSchema>;
 type Alias = { hostname: string; zoneId: string };
 const webRecordTypes = new Set(["A", "AAAA", "CNAME", "HTTPS", "SVCB"]);
+
+export function verifyPagesProject(
+  target: PagesTarget,
+  value: unknown,
+): { deployed: boolean } {
+  const project = projectSchema.safeParse(value).data;
+  if (
+    project?.name !== target.pagesProject ||
+    `https://${project.subdomain}` !== target.productionOrigin ||
+    project.production_branch !== "main" ||
+    project.source != null
+  )
+    throw new Error(
+      `Cloudflare project ${target.pagesProject} does not match the exact Direct Upload production project`,
+    );
+  return { deployed: Boolean(project.canonical_deployment) };
+}
 
 export function aliasHasExpectedRecord(
   records: DnsRecord[],
@@ -56,24 +74,26 @@ export function aliasHasExpectedRecord(
 export class PagesDomains {
   private readonly accountId: string;
   private readonly token: string;
-  private readonly projectPath: string;
   private readonly target: string;
   private readonly hostnames: string[];
 
-  constructor(readonly manifest: AppManifest) {
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-    const token = process.env.CLOUDFLARE_API_TOKEN;
+  constructor(readonly manifest: AppManifest, credential?: {account:string;token:string}) {
+    const accountId = credential?.account ?? process.env.CLOUDFLARE_ACCOUNT_ID;
+    const token = credential?.token ?? process.env.CLOUDFLARE_API_TOKEN;
     if (!accountId || !/^[0-9a-f]{32}$/.test(accountId) || !token)
       throw new Error(
         "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for Pages custom domains",
       );
     this.accountId = accountId;
     this.token = token;
-    this.projectPath = `/accounts/${accountId}/pages/projects/${manifest.pagesProject}`;
     this.target = new URL(manifest.productionOrigin).hostname;
     this.hostnames = customOrigins(manifest).map(
       (origin) => new URL(origin).hostname,
     );
+  }
+
+  private projectPath(name = this.manifest.pagesProject): string {
+    return `/accounts/${this.accountId}/pages/projects/${name}`;
   }
 
   private async request<T>(
@@ -120,21 +140,13 @@ export class PagesDomains {
     return parsed.data;
   }
 
-  async verifyProject(): Promise<void> {
+  async verifyProject(target: PagesTarget): Promise<{ deployed: boolean }> {
     const project = await this.request(
-      this.projectPath,
-      projectSchema,
-      "read the Pages project",
+      this.projectPath(target.pagesProject),
+      z.unknown(),
+      `read the Pages project ${target.pagesProject}`,
     );
-    if (
-      project.name !== this.manifest.pagesProject ||
-      project.subdomain !== this.target ||
-      project.production_branch !== "main" ||
-      project.source != null
-    )
-      throw new Error(
-        "Cloudflare project does not match the exact Direct Upload production project",
-      );
+    return verifyPagesProject(target, project);
   }
 
   private async alias(hostname: string): Promise<Alias> {
@@ -191,7 +203,7 @@ export class PagesDomains {
 
   private async domains() {
     return this.request(
-      `${this.projectPath}/domains?per_page=100`,
+      `${this.projectPath()}/domains?per_page=100`,
       z.array(domainSchema),
       "read Pages custom domains",
     );
@@ -207,7 +219,7 @@ export class PagesDomains {
       await this.hasRecord(alias);
       if (!domains.some((domain) => domain.name === hostname)) {
         const created = await this.request(
-          `${this.projectPath}/domains`,
+          `${this.projectPath()}/domains`,
           domainSchema,
           `attach the Pages domain ${hostname}`,
           { name: hostname },

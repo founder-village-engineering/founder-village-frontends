@@ -39,6 +39,6 @@ Refresh this app’s generated contracts from the sibling runtime.
 npm run frontend-contracts:sync -- --app founder-village-app --frontends-root ../founder-village-frontends
 ```
 
-The production project serves `https://founder-village-app.pages.dev`, `https://founderhaus.org`, and `https://foundervillage.org` against `https://api.foundervillage.org`. Use the manifest and shared release workflow to verify that each origin serves the same committed build with its exact OIDC callback. [Cloudflare Pages release](../../docs/pages-release.md)
+The release targets `https://founder-village-app.pages.dev` and `https://founder-village-apps.pages.dev` with the same React Native Web build. `https://founderhaus.org` and `https://foundervillage.org` attach to the primary project. Every origin uses `https://api.foundervillage.org` and its own exact OIDC callback. [Cloudflare Pages release](../../docs/pages-release.md)
 
 The Expo source has its own `com.foundervillage.app` identifier. Native provider registration, signing, and distribution use that identifier. Hosted premium checkout is available in the browser.
